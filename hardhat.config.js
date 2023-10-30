@@ -1,7 +1,6 @@
 require("dotenv").config();
 require("hardhat-gas-reporter");
 require("@nomicfoundation/hardhat-toolbox");
-require("@openzeppelin/hardhat-upgrades");
 
 module.exports = {
   defaultNetwork: "hardhat",
@@ -33,7 +32,7 @@ module.exports = {
     },
   },
   solidity: {
-    version: "0.8.19",
+    version: "0.8.20",
     settings: {
       optimizer: {
         enabled: true,
@@ -42,7 +41,7 @@ module.exports = {
     },
   },
   gasReporter: {
-    enabled: true,
+    enabled: false,
     currency: "USD",
     coinmarketcap: process.env.COINMARKETCAP_API_KEY,
     gasPriceApi:
