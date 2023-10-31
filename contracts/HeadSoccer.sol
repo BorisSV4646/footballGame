@@ -11,7 +11,7 @@ contract HeadSoccerRubies is ERC20, Ownable {
     /**
      * @dev The amount of the commission for the game - default 20%.
      */
-    uint256 public commissions = 20 ether;
+    uint256 public commissions = 20;
 
     /**
      * @dev Addresses of tokens for which rubies can be exchanged.
@@ -76,7 +76,7 @@ contract HeadSoccerRubies is ERC20, Ownable {
         uint256 _initialSupply,
         address _owner
     ) ERC20("HeadSoccerRubies", "HSR") Ownable(_owner) {
-        _mint(msg.sender, _initialSupply * ONE_ETHER_IN_WEI);
+        _mint(msg.sender, _initialSupply);
     }
 
     /**
@@ -90,7 +90,7 @@ contract HeadSoccerRubies is ERC20, Ownable {
         address tokenAddress
     ) external validAddress(tokenAddress) {
         IERC20 token = IERC20(tokenAddress);
-        if (token.balanceOf(msg.sender) >= amount) {
+        if (token.balanceOf(msg.sender) <= amount) {
             revert NotEnoughERC20(token.balanceOf(msg.sender), amount);
         }
         require(token.transferFrom(msg.sender, address(this), amount));
@@ -118,9 +118,9 @@ contract HeadSoccerRubies is ERC20, Ownable {
      */
     function changeRubieToThings(
         uint256 amount
-    ) external hasEnoughBalance(amount * ONE_ETHER_IN_WEI) {
-        _burn(msg.sender, amount * ONE_ETHER_IN_WEI);
-        emit ChangeRubies(amount * ONE_ETHER_IN_WEI);
+    ) external hasEnoughBalance(amount) {
+        _burn(msg.sender, amount);
+        emit ChangeRubies(amount);
     }
 
     /**
@@ -129,11 +129,11 @@ contract HeadSoccerRubies is ERC20, Ownable {
      */
     function playGameForRubie(
         uint256 amount
-    ) external hasEnoughBalance(amount * ONE_ETHER_IN_WEI) {
+    ) external hasEnoughBalance(amount) {
         uint256 commissionForGame = (amount * commissions) / 100;
         require(transfer(owner(), commissionForGame));
-        _burn(msg.sender, amount * ONE_ETHER_IN_WEI - commissionForGame);
-        emit PlayGame(amount * ONE_ETHER_IN_WEI);
+        _burn(msg.sender, amount - commissionForGame);
+        emit PlayGame(amount);
     }
 
     /**
@@ -144,6 +144,6 @@ contract HeadSoccerRubies is ERC20, Ownable {
         if (newCommission <= 0 || newCommission >= 100) {
             revert NotRightCommission(newCommission);
         }
-        commissions = newCommission * ONE_ETHER_IN_WEI;
+        commissions = newCommission;
     }
 }
