@@ -18,7 +18,6 @@ contract HeadSoccerRubies is ERC20, Ownable {
      */
     address public constant USDT = 0xc2132D05D31c914a87C6611C10748AEb04B58e8F;
     address public constant USDC = 0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359;
-    address public constant DAI = 0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
 
     /**
      * @dev Invalid token to exchange.
@@ -49,9 +48,7 @@ contract HeadSoccerRubies is ERC20, Ownable {
      * @dev The modifier checks whether the token address is valid for exchange.
      */
     modifier validAddress(address tokenAddress) {
-        if (
-            tokenAddress != USDT || tokenAddress != USDC || tokenAddress != DAI
-        ) {
+        if (tokenAddress != USDT || tokenAddress != USDC) {
             revert NotValidToken(tokenAddress);
         }
         _;
@@ -61,7 +58,7 @@ contract HeadSoccerRubies is ERC20, Ownable {
      * @dev The modifier checks whether the balance of rubies is sufficient for the operation.
      */
     modifier hasEnoughBalance(uint256 amount) {
-        if (balanceOf(msg.sender) <= amount) {
+        if (balanceOf(msg.sender) < amount) {
             revert NotEnoughRubies(balanceOf(msg.sender), amount);
         }
         _;
@@ -90,10 +87,14 @@ contract HeadSoccerRubies is ERC20, Ownable {
         address tokenAddress
     ) external validAddress(tokenAddress) {
         IERC20 token = IERC20(tokenAddress);
-        if (token.balanceOf(msg.sender) <= amount) {
-            revert NotEnoughERC20(token.balanceOf(msg.sender), amount);
+        uint256 userBalance = token.balanceOf(msg.sender);
+        uint256 normalizedAmount = amount / 1e12;
+        if (userBalance < normalizedAmount) {
+            revert NotEnoughERC20(userBalance, normalizedAmount);
         }
-        require(token.transferFrom(msg.sender, address(this), amount));
+        require(
+            token.transferFrom(msg.sender, address(this), normalizedAmount)
+        );
         _mint(msg.sender, amount);
         emit ChangeERC20toRubies(amount, tokenAddress);
     }
@@ -107,8 +108,9 @@ contract HeadSoccerRubies is ERC20, Ownable {
         uint256 amount,
         address tokenAddress
     ) external validAddress(tokenAddress) hasEnoughBalance(amount) {
+        uint256 normalizedAmount = amount / 1e12;
         _burn(msg.sender, amount);
-        require(IERC20(tokenAddress).transfer(msg.sender, amount));
+        require(IERC20(tokenAddress).transfer(msg.sender, normalizedAmount));
         emit ChangeRubiesToERC20(amount, tokenAddress);
     }
 

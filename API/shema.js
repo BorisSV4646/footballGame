@@ -1,12 +1,21 @@
-const { gql } = require("apollo-server");
-
-const typeDefs = gql`
-  type Query {
-    name: String
-    symbol: String
-    decimals: int
-    totalSupply: int
+const typeDefs = `#graphql
+   type Query {
+     name: String
+     symbol: String
+     decimals: Int
+     totalSupply: Int
+     balanceOf(address: String!): Int
+     allowance(owner: String!, spender: String!): Int
+     tokens: [String]
+     contractAddress: String
+     commission: String
+     owner: String
+   }
+  type Mutation {
+    renounceOwnership: String
+    transferOwnership(newOwner: String!): String
+    changeCommission(newCommission: Int!): String
   }
 `;
 
-module.exports = typeDefs;
+exports.typeDefs = typeDefs;

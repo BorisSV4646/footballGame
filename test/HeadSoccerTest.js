@@ -105,12 +105,6 @@ describe("HeadSoccerRubies Deploy", function () {
       const tokenRubiesAddress = await RubiesToken.getAddress();
 
       await tokenTest.approve(tokenRubiesAddress, ethers.parseEther("10"));
-      await expect(
-        RubiesToken.changeERC20toRubie(
-          ethers.parseEther("11"),
-          tokenTestAddress
-        )
-      ).to.be.reverted;
       const changeTokens = await RubiesToken.changeERC20toRubie(
         ethers.parseEther("10"),
         tokenTestAddress
@@ -124,7 +118,7 @@ describe("HeadSoccerRubies Deploy", function () {
       await expect(changeTokens).to.changeTokenBalances(
         tokenTest,
         [owner.address, tokenRubiesAddress],
-        [-ethers.parseEther("10"), ethers.parseEther("10")]
+        [-10000000, 10000000]
       );
 
       await expect(changeTokens)
@@ -150,13 +144,12 @@ describe("HeadSoccerRubies Deploy", function () {
       await expect(changeTokensToRubie).to.changeTokenBalances(
         tokenTest,
         [owner.address, tokenRubiesAddress],
-        [ethers.parseEther("10"), -ethers.parseEther("10")]
+        [10000000, -10000000]
       );
 
       await expect(changeTokensToRubie)
         .to.emit(RubiesToken, "ChangeRubiesToERC20")
         .withArgs(ethers.parseEther("10"), tokenTestAddress);
     });
-  });
-  */
+  }); */
 });

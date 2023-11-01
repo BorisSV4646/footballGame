@@ -11,4 +11,8 @@ contract TestToken is ERC20, Ownable {
     ) ERC20("TestToken", "TT") Ownable(_owner) {
         _mint(msg.sender, _initialSupply);
     }
+
+    function decimals() public view override returns (uint8) {
+        return 6;
+    }
 }
