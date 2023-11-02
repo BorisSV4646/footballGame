@@ -1,6 +1,5 @@
 const { ethers, JsonRpcProvider } = require("ethers");
 const contractData = require("../artifacts/contracts/HeadSoccer.sol/HeadSoccerRubies.json");
-const { ethereum } = typeof window !== "undefined" ? window : {};
 require("dotenv").config();
 
 const provider = new JsonRpcProvider(process.env.MUMBAI_RPC_URL);

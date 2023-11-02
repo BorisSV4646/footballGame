@@ -12,7 +12,7 @@ contract TestToken is ERC20, Ownable {
         _mint(msg.sender, _initialSupply);
     }
 
-    function decimals() public view override returns (uint8) {
+    function decimals() public pure override returns (uint8) {
         return 6;
     }
 }
