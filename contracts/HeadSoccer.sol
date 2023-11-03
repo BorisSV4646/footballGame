@@ -48,7 +48,7 @@ contract HeadSoccerRubies is ERC20, Ownable {
      * @dev The modifier checks whether the token address is valid for exchange.
      */
     modifier validAddress(address tokenAddress) {
-        if (tokenAddress != USDT || tokenAddress != USDC) {
+        if (tokenAddress != USDT && tokenAddress != USDC) {
             revert NotValidToken(tokenAddress);
         }
         _;

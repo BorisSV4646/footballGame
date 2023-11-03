@@ -4,7 +4,7 @@ require("dotenv").config();
 
 const provider = new JsonRpcProvider(process.env.MUMBAI_RPC_URL);
 const tokenAbi = contractData.abi;
-const tokenAddress = "0xf96e88F96515aD50a8c4D0c1B75F6dC6272Fe5d9";
+const tokenAddress = process.env.CONTRACT_ADDRESS;
 const tokenContract = new ethers.Contract(tokenAddress, tokenAbi, provider);
 
 async function getContract() {

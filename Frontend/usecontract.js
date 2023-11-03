@@ -1,53 +1,97 @@
-let provider;
-let signer;
+// Переменные для хранения подписчика и контракта
+let signer, tokenContract;
 
+function readJSONFile(url) {
+  return fetch(url)
+    .then((response) => response.json())
+    .then((data) => {
+      return data.abi;
+    })
+    .catch((error) => {
+      console.error("Ошибка чтения файла JSON:", error);
+    });
+}
+
+// Функция для получения кошелька
 async function getWallet() {
   if (typeof window.ethereum !== "undefined") {
-    provider = new ethers.providers.Web3Provider(window.ethereum);
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
     signer = provider.getSigner();
-    const connectedAccount = await signer.getAddress();
-    return connectedAccount;
+    return await signer.getAddress();
   } else {
-    alert(
-      "Metamask не доступен, установите необходимое расширение https://chrome.google.com/webstore"
-    );
-    return;
+    alert("Metamask не доступен, установите необходимое расширение");
   }
 }
 
+// Функция для получения контракта токена
 async function getTokenContract() {
-  const tokenContractAddress = "0x5Ec8d136E4F4E5fBA63Fb1aC7679ee8C4fA3Ace7";
-  const tokenContractABI = await readJSONFile("contracts/CanvaToken.json");
-  const tokenContract = new ethers.Contract(
-    tokenContractAddress,
-    tokenContractABI,
-    signer
-  );
+  if (!tokenContract) {
+    const tokenContractAddress = "0x4C182B9B26a7C5Fe5E27D8827F162D2632957549";
+    const tokenContractABI = await readJSONFile(
+      "/artifacts/contracts/HeadSoccer.sol/HeadSoccerRubies.json"
+    );
+    tokenContract = new ethers.Contract(
+      tokenContractAddress,
+      tokenContractABI,
+      signer
+    );
+  }
   return tokenContract;
 }
 
-inputField.addEventListener("input", async function () {
-  const tokenContract = await getTokenContract();
-  const walletAddress = await getWallet();
-  const balance = await tokenContract.balanceOf(walletAddress);
+// Объединенная функция для отправки транзакций
+async function performTransaction(action, amount, address) {
+  try {
+    const walletAddress = await getWallet();
+    if (!walletAddress) throw new Error("Кошелек не подключен.");
 
-  const selectedValue = parseInt(this.value);
-  const percentage =
-    (selectedValue / (balance / ethers.utils.parseUnits("1", 18))) * 100;
+    const tokenContract = await getTokenContract();
+    const txResponse = await tokenContract[action](
+      ethers.utils.parseEther(`${amount}`),
+      ...(address ? [address.toString()] : []),
+      { from: walletAddress, gasLimit: 2000000 }
+    );
 
-  slider.value = Math.floor(percentage);
-  updateSliderAppearance(Math.floor(percentage));
-
-  const price = Math.floor(selectedValue * 0.023);
-  priceStaking.textContent = "~" + price.toLocaleString() + " USD";
-
-  const allowance = await tokenContract.allowance(
-    walletAddress,
-    "0xa43fA2cfF564f70376b422AA3d3b45f63fCdbca2"
-  );
-  if (allowance.gt(ethers.utils.parseUnits(selectedValue.toString(), 18))) {
-    spanElementStake.textContent = "deposit";
-  } else {
-    spanElementStake.textContent = "approve";
+    console.log("Транзакция отправлена! Ожидание подтверждения...");
+    const txReceipt = await txResponse.wait();
+    console.log("Транзакция подтверждена!", txReceipt);
+  } catch (error) {
+    console.error("Ошибка:", error);
   }
+}
+
+// Получаем элементы формы и вешаем слушателей на кнопки
+document.addEventListener("DOMContentLoaded", function () {
+  const amountInput = document.getElementById("amountInput");
+  const addressInput = document.getElementById("addressInput");
+
+  document.getElementById("playGame").addEventListener("click", function () {
+    performTransaction("playGameForRubie", amountInput.value);
+  });
+
+  document
+    .getElementById("changeRubiesToThings")
+    .addEventListener("click", function () {
+      performTransaction("changeRubieToThings", amountInput.value);
+    });
+
+  document
+    .getElementById("changeRubiesToErc20")
+    .addEventListener("click", function () {
+      performTransaction(
+        "changeRubieToERC20",
+        amountInput.value,
+        addressInput.value
+      );
+    });
+
+  document
+    .getElementById("changeErc20ToRubies")
+    .addEventListener("click", function () {
+      performTransaction(
+        "changeERC20toRubie",
+        amountInput.value,
+        addressInput.value
+      );
+    });
 });

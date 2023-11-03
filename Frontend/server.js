@@ -6,6 +6,7 @@ const PORT = 3000;
 
 // Serve static files from the 'public' directory where your HTML file is located
 app.use(express.static(path.join(__dirname)));
+app.use("/artifacts", express.static(path.join(__dirname, "../artifacts")));
 
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "/index.html"));

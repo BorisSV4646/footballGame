@@ -7,11 +7,22 @@
   </head>
   <body>
     <button type="button" id="connect_metamask">Connect Metamask</button>
-    <button type="button">Change ERC20</button>
-    <button type="button">Change Rubies</button>
-    <button type="button">Change Rubies to Things</button>
-    <button type="button">Play Game</button>
+    <form id="unifiedForm">
+      <label for="amountInput">Введите количество:</label>
+      <input type="number" id="amountInput" required />
+
+      <label for="addressInput">Введите адрес (опционально):</label>
+      <input type="text" id="addressInput" />
+
+      <button type="button" id="playGame">Играть</button>
+      <button type="button" id="changeRubiesToThings">Обменять Rubies</button>
+      <button type="button" id="changeRubiesToErc20">Обменять на ERC20</button>
+      <button type="button" id="changeErc20ToRubies">
+        Обменять ERC20 на Rubies
+      </button>
+    </form>
   </body>
   <script type="module" src="./connectwallet.js"></script>
+  <script type="module" src="./usecontract.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 </html>
