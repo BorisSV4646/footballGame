@@ -63,10 +63,16 @@ async function performTransaction(action, amount, address) {
 // Получаем элементы формы и вешаем слушателей на кнопки
 document.addEventListener("DOMContentLoaded", function () {
   const amountInput = document.getElementById("amountInput");
-  const addressInput = document.getElementById("addressInput");
+  const addressInput1 = document.getElementById("addressInput1");
+  const addressInput2 = document.getElementById("addressInput2");
 
   document.getElementById("playGame").addEventListener("click", function () {
-    performTransaction("playGameForRubie", amountInput.value);
+    performTransaction(
+      "startGame",
+      addressInput1,
+      addressInput2,
+      amountInput.value
+    );
   });
 
   document
@@ -78,20 +84,12 @@ document.addEventListener("DOMContentLoaded", function () {
   document
     .getElementById("changeRubiesToErc20")
     .addEventListener("click", function () {
-      performTransaction(
-        "changeRubieToERC20",
-        amountInput.value,
-        addressInput.value
-      );
+      performTransaction("changeRubieToERC20", amountInput.value);
     });
 
   document
     .getElementById("changeErc20ToRubies")
     .addEventListener("click", function () {
-      performTransaction(
-        "changeERC20toRubie",
-        amountInput.value,
-        addressInput.value
-      );
+      performTransaction("changeERC20toRubie", amountInput.value);
     });
 });

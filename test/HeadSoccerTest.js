@@ -6,36 +6,45 @@ const { ethers } = require("hardhat");
 
 describe("HeadSoccerRubies Deploy", function () {
   async function deployFixture() {
-    const [owner, otherAccount1] = await ethers.getSigners();
+    const [owner, otherAccount1, otherAccount2] = await ethers.getSigners();
+
+    const TestToken = await ethers.getContractFactory("TestToken");
+    const tokenTest = await TestToken.deploy(ethers.parseEther("100"), owner);
+
     const HeadSoccerRubies = await ethers.getContractFactory(
       "HeadSoccerRubies"
     );
     const RubiesToken = await HeadSoccerRubies.deploy(
-      ethers.parseEther("100"),
-      owner
+      otherAccount1,
+      await tokenTest.getAddress()
     );
-    await RubiesToken.transfer(otherAccount1.address, ethers.parseEther("10"));
     const user1 = await RubiesToken.connect(otherAccount1);
-
-    const TestToken = await ethers.getContractFactory("TestToken");
-    const tokenTest = await TestToken.deploy(ethers.parseEther("100"), owner);
+    const user2 = await RubiesToken.connect(otherAccount2);
 
     return {
       owner,
       RubiesToken,
       otherAccount1,
+      otherAccount2,
       user1,
+      user2,
       tokenTest,
     };
   }
 
   describe("Deployment", function () {
-    it("Should set the right owner", async function () {
-      const { owner, RubiesToken } = await loadFixture(deployFixture);
-      expect(await RubiesToken.balanceOf(owner.address)).to.equal(
-        ethers.parseEther("90")
+    it("Should set the right owner and role", async function () {
+      const { owner, RubiesToken, tokenTest, otherAccount1 } =
+        await loadFixture(deployFixture);
+      expect(await tokenTest.balanceOf(owner.address)).to.equal(
+        ethers.parseEther("100")
       );
-      expect(await RubiesToken.owner()).to.equal(owner.address);
+      const defaultRole =
+        "0x0000000000000000000000000000000000000000000000000000000000000000";
+      const frontRole = await RubiesToken.FRONTEND_WALLET();
+      expect(await RubiesToken.hasRole(defaultRole, owner.address)).to.be.true;
+      expect(await RubiesToken.hasRole(frontRole, otherAccount1.address)).to.be
+        .true;
     });
   });
 
@@ -54,50 +63,8 @@ describe("HeadSoccerRubies Deploy", function () {
     });
   });
 
-  describe("playGameForRubie", function () {
-    it("Function playGameForRubie work right", async function () {
-      const { owner, otherAccount1, user1, RubiesToken } = await loadFixture(
-        deployFixture
-      );
-      await expect(user1.playGameForRubie(ethers.parseEther("11"))).to.be
-        .reverted;
-      const playGame = await user1.playGameForRubie(ethers.parseEther("5"));
-      await expect(playGame).to.changeTokenBalances(
-        RubiesToken,
-        [otherAccount1.address, owner.address],
-        [-ethers.parseEther("5"), ethers.parseEther("1")]
-      );
-
-      await expect(playGame)
-        .to.emit(RubiesToken, "PlayGame")
-        .withArgs(ethers.parseEther("5"));
-    });
-  });
-
-  describe("changeRubieToThings", function () {
-    it("Function changeRubieToThings work right", async function () {
-      const { otherAccount1, user1, RubiesToken } = await loadFixture(
-        deployFixture
-      );
-      await expect(user1.playGameForRubie(ethers.parseEther("11"))).to.be
-        .reverted;
-      const changeFings = await user1.changeRubieToThings(
-        ethers.parseEther("5")
-      );
-      await expect(changeFings).to.changeTokenBalance(
-        RubiesToken,
-        otherAccount1.address,
-        -ethers.parseEther("5")
-      );
-      await expect(changeFings)
-        .to.emit(RubiesToken, "ChangeRubies")
-        .withArgs(ethers.parseEther("5"));
-    });
-  });
-
-  // !You can test these functions after disabling the modifier validAddress(tokenAddress).
-  /* describe("ChangeERC20toRubie and changeRubieToERC20", function () {
-    it("Function changeERC20toRubie work right", async function () {
+  describe("ChangeERC20toRubie and changeRubieToERC20", function () {
+    it("Functions change work right", async function () {
       const { RubiesToken, tokenTest, owner } = await loadFixture(
         deployFixture
       );
@@ -106,14 +73,13 @@ describe("HeadSoccerRubies Deploy", function () {
 
       await tokenTest.approve(tokenRubiesAddress, ethers.parseEther("10"));
       const changeTokens = await RubiesToken.changeERC20toRubie(
-        ethers.parseEther("10"),
-        tokenTestAddress
+        ethers.parseEther("10")
       );
 
       await expect(changeTokens).to.changeTokenBalances(
         RubiesToken,
         [owner.address, tokenRubiesAddress],
-        [ethers.parseEther("10"), 0]
+        [ethers.parseEther("100"), 0]
       );
       await expect(changeTokens).to.changeTokenBalances(
         tokenTest,
@@ -125,15 +91,11 @@ describe("HeadSoccerRubies Deploy", function () {
         .to.emit(RubiesToken, "ChangeERC20toRubies")
         .withArgs(ethers.parseEther("10"), tokenTestAddress);
 
-      await expect(
-        RubiesToken.changeRubieToERC20(
-          ethers.parseEther("11"),
-          tokenTestAddress
-        )
-      ).to.be.reverted;
+      await expect(RubiesToken.changeRubieToERC20(ethers.parseEther("101"))).to
+        .be.reverted;
+
       const changeTokensToRubie = await RubiesToken.changeRubieToERC20(
-        ethers.parseEther("10"),
-        tokenTestAddress
+        ethers.parseEther("10")
       );
 
       await expect(changeTokensToRubie).to.changeTokenBalances(
@@ -144,12 +106,154 @@ describe("HeadSoccerRubies Deploy", function () {
       await expect(changeTokensToRubie).to.changeTokenBalances(
         tokenTest,
         [owner.address, tokenRubiesAddress],
-        [10000000, -10000000]
+        [1000000n, -1000000n]
       );
 
       await expect(changeTokensToRubie)
         .to.emit(RubiesToken, "ChangeRubiesToERC20")
         .withArgs(ethers.parseEther("10"), tokenTestAddress);
     });
-  }); */
+  });
+
+  describe("changeRubieToThings", function () {
+    it("Function changeRubieToThings work right", async function () {
+      const { owner, RubiesToken, tokenTest } = await loadFixture(
+        deployFixture
+      );
+
+      await tokenTest.getAddress();
+      const tokenRubiesAddress = await RubiesToken.getAddress();
+      await tokenTest.approve(tokenRubiesAddress, ethers.parseEther("10"));
+      await RubiesToken.changeERC20toRubie(ethers.parseEther("10"));
+
+      await expect(RubiesToken.changeRubieToThings(ethers.parseEther("101"))).to
+        .be.reverted;
+      const changeRubies = await RubiesToken.changeRubieToThings(
+        ethers.parseEther("50")
+      );
+
+      await expect(changeRubies).to.changeTokenBalances(
+        RubiesToken,
+        [tokenRubiesAddress, owner.address],
+        [ethers.parseEther("0"), -ethers.parseEther("50")]
+      );
+      await expect(changeRubies).to.changeTokenBalances(
+        tokenTest,
+        [tokenRubiesAddress, owner.address],
+        [-5000000n, 5000000n]
+      );
+
+      await expect(changeRubies)
+        .to.emit(RubiesToken, "ChangeRubies")
+        .withArgs(ethers.parseEther("50"));
+    });
+  });
+
+  describe("startGame", function () {
+    it("Function startGame work right", async function () {
+      const { otherAccount2, tokenTest, owner, user1, user2, RubiesToken } =
+        await loadFixture(deployFixture);
+
+      await tokenTest.getAddress();
+      const tokenRubiesAddress = await RubiesToken.getAddress();
+      await tokenTest.approve(tokenRubiesAddress, ethers.parseEther("10"));
+      await RubiesToken.changeERC20toRubie(ethers.parseEther("10"));
+      await RubiesToken.transfer(
+        otherAccount2.address,
+        ethers.parseEther("20")
+      );
+
+      await expect(
+        user2.startGame(
+          owner.address,
+          otherAccount2.address,
+          ethers.parseEther("20")
+        )
+      ).to.be.reverted;
+
+      const startGame = await user1.startGame(
+        owner.address,
+        otherAccount2.address,
+        ethers.parseEther("20")
+      );
+
+      await expect(startGame).to.changeTokenBalances(
+        RubiesToken,
+        [otherAccount2.address, owner.address, tokenRubiesAddress],
+        [-ethers.parseEther("20"), -ethers.parseEther("20"), 0]
+      );
+      await expect(startGame).to.changeTokenBalances(
+        tokenTest,
+        [otherAccount2.address, owner.address, tokenRubiesAddress],
+        [0, 800000n, -800000n]
+      );
+
+      await expect(startGame)
+        .to.emit(RubiesToken, "StartGameEvent")
+        .withArgs(
+          ethers.parseEther("20"),
+          owner.address,
+          otherAccount2.address
+        );
+    });
+  });
+
+  describe("finishGame", function () {
+    it("Function finishGame work right", async function () {
+      const { owner, RubiesToken, tokenTest, user2, user1 } = await loadFixture(
+        deployFixture
+      );
+      const tokenRubiesAddress = await RubiesToken.getAddress();
+
+      await expect(user2.finishGame(owner.address, ethers.parseEther("10"))).to
+        .be.reverted;
+      const finishGame = await user1.finishGame(
+        owner.address,
+        ethers.parseEther("50")
+      );
+
+      await expect(finishGame).to.changeTokenBalances(
+        RubiesToken,
+        [tokenRubiesAddress, owner.address],
+        [ethers.parseEther("0"), ethers.parseEther("50")]
+      );
+      await expect(finishGame).to.changeTokenBalances(
+        tokenTest,
+        [tokenRubiesAddress, owner.address],
+        [0, 0]
+      );
+
+      await expect(finishGame)
+        .to.emit(RubiesToken, "FinishGameEvent")
+        .withArgs(owner.address, ethers.parseEther("50"));
+    });
+  });
+
+  describe("changeConversion", function () {
+    it("Function changeConversion work right", async function () {
+      const { owner, RubiesToken, tokenTest } = await loadFixture(
+        deployFixture
+      );
+      const tokenRubiesAddress = await RubiesToken.getAddress();
+
+      await RubiesToken.changeConversion(100);
+
+      await expect(RubiesToken.changeConversion(0)).to.be.reverted;
+      await tokenTest.approve(tokenRubiesAddress, ethers.parseEther("10"));
+      const changeTokens = await RubiesToken.changeERC20toRubie(
+        ethers.parseEther("10")
+      );
+
+      await expect(changeTokens).to.changeTokenBalances(
+        RubiesToken,
+        [tokenRubiesAddress, owner.address],
+        [ethers.parseEther("0"), ethers.parseEther("1000")]
+      );
+      await expect(changeTokens).to.changeTokenBalances(
+        tokenTest,
+        [tokenRubiesAddress, owner.address],
+        [10000000n, -10000000n]
+      );
+    });
+  });
 });

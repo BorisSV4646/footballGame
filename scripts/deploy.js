@@ -4,12 +4,12 @@ require("dotenv").config();
 async function main() {
   const HeadSoccerRubies = await ethers.getContractFactory("HeadSoccerRubies");
   const RubiesToken = await HeadSoccerRubies.deploy(
-    ethers.parseEther("100"),
-    process.env.WALLET_ADDRESS
+    process.env.WALLET_ADDRESS,
+    "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"
   );
   await RubiesToken.waitForDeployment();
 
-  console.log(`Poker contract deployed ${await RubiesToken.getAddress()}`);
+  console.log(`Contract deployed ${await RubiesToken.getAddress()}`);
 }
 
 main().catch((error) => {

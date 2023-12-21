@@ -22,6 +22,10 @@ module.exports = {
       url: process.env.BSC_TESTNET_RPC_URL,
       accounts: [process.env.PRIVATE_KEY],
     },
+    polygon: {
+      url: process.env.POLYGON_RPC_MAINET,
+      accounts: [process.env.PRIVATE_KEY],
+    },
     arbOne: {
       url: process.env.ARBITRUM_ONE,
       accounts: [process.env.PRIVATE_KEY],

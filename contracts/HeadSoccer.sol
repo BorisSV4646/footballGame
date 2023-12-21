@@ -2,13 +2,10 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
 contract HeadSoccerRubies is ERC20, AccessControl {
-    uint256 private constant ONE_ETHER_IN_WEI = 1 ether;
-
     /**
      * @dev The role of the wallet, which can trigger the start and finish functions of the game.
      */
@@ -25,17 +22,14 @@ contract HeadSoccerRubies is ERC20, AccessControl {
     uint256 public conversion = 10;
 
     /**
-     * @dev Gme numbers
-     */
-    uint256 internal gameId = 1;
-
-    /**
      * @dev Addresses of tokens for which rubies can be exchanged.
      */
-    address public constant USDT = 0xc2132D05D31c914a87C6611C10748AEb04B58e8F;
-    address public constant USDC = 0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359;
+    address public immutable USDT;
 
-    address internal owner;
+    /**
+     * @dev The address of the contract owner.
+     */
+    address internal immutable owner;
 
     /**
      * @dev Invalid token to exchange.
@@ -58,6 +52,11 @@ contract HeadSoccerRubies is ERC20, AccessControl {
     error NotRightCommission(uint256 newCommission);
 
     /**
+     * @dev Check zero address usdt.
+     */
+    error ZeroAddress(address zeroAddress);
+
+    /**
      * @dev An error occurs when the function does not call the frontend wallet.
      */
     error CallerNotFrontWallet(address caller);
@@ -67,16 +66,6 @@ contract HeadSoccerRubies is ERC20, AccessControl {
     event ChangeRubies(uint256 amount);
     event StartGameEvent(uint256 amount, address player1, address player2);
     event FinishGameEvent(address winner, uint256 rewars);
-
-    /**
-     * @dev The modifier checks whether the token address is valid for exchange.
-     */
-    modifier validAddress(address tokenAddress) {
-        if (tokenAddress != USDT && tokenAddress != USDC) {
-            revert NotValidToken(tokenAddress);
-        }
-        _;
-    }
 
     /**
      * @dev The modifier checks whether the balance of rubies is sufficient for the operation.
@@ -92,8 +81,15 @@ contract HeadSoccerRubies is ERC20, AccessControl {
      * @dev Initializes the contract setting the address provided by the deployer as the initial owner.
      * @param _frontWallet Wallet to start the game function and finish the game.
      */
-    constructor(address _frontWallet) ERC20("HeadSoccerRubies", "HSR") {
+    constructor(
+        address _frontWallet,
+        address _usdt
+    ) ERC20("HeadSoccerRubies", "HSR") {
         owner = msg.sender;
+        if (_usdt == address(0)) {
+            revert ZeroAddress(_usdt);
+        }
+        USDT = _usdt;
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(FRONTEND_WALLET, _frontWallet);
     }
@@ -102,13 +98,9 @@ contract HeadSoccerRubies is ERC20, AccessControl {
      * @notice Before the exchange, it is necessary to give the specified contract permission to dispose of the token.
      * @dev The function of exchanging ERC20 tokens for rubies.
      * @param amount The number of tokens.
-     * @param tokenAddress Which tokens the user wants to exchange.
      */
-    function changeERC20toRubie(
-        uint256 amount,
-        address tokenAddress
-    ) external validAddress(tokenAddress) {
-        IERC20 token = IERC20(tokenAddress);
+    function changeERC20toRubie(uint256 amount) external {
+        IERC20 token = IERC20(USDT);
         uint256 userBalance = token.balanceOf(msg.sender);
         uint256 normalizedAmount = amount / 1e12;
         if (userBalance < normalizedAmount) {
@@ -118,39 +110,31 @@ contract HeadSoccerRubies is ERC20, AccessControl {
             token.transferFrom(msg.sender, address(this), normalizedAmount)
         );
         _mint(msg.sender, amount * conversion);
-        emit ChangeERC20toRubies(amount, tokenAddress);
+        emit ChangeERC20toRubies(amount, USDT);
     }
 
     /**
      * @dev The function of exchanging rubies for ERC20 tokens.
      * @param amount The number of tokens.
-     * @param tokenAddress Which token the user wants to exchange rubies for.
      */
     function changeRubieToERC20(
-        uint256 amount,
-        address tokenAddress
-    ) external validAddress(tokenAddress) hasEnoughBalance(amount) {
+        uint256 amount
+    ) external hasEnoughBalance(amount) {
         uint256 normalizedAmount = amount / 1e12;
         _burn(msg.sender, amount);
         require(
-            IERC20(tokenAddress).transfer(
-                msg.sender,
-                normalizedAmount / conversion
-            )
+            IERC20(USDT).transfer(msg.sender, normalizedAmount / conversion)
         );
-        emit ChangeRubiesToERC20(amount, tokenAddress);
+        emit ChangeRubiesToERC20(amount, USDT);
     }
 
     /**
      * @dev The function of sending the commission and the price of the items to the owner.
      * @param amount The number of tokens.
      */
-    function sendMoneyToOwner(uint256 amount, address tokenAddress) internal {
+    function sendMoneyToOwner(uint256 amount) internal {
         uint256 normalizedAmount = amount / 1e12;
-        _burn(msg.sender, amount);
-        require(
-            IERC20(tokenAddress).transfer(owner, normalizedAmount / conversion)
-        );
+        require(IERC20(USDT).transfer(owner, normalizedAmount / conversion));
     }
 
     /**
@@ -158,10 +142,10 @@ contract HeadSoccerRubies is ERC20, AccessControl {
      * @param amount The number of tokens.
      */
     function changeRubieToThings(
-        uint256 amount,
-        address tokenAddress
+        uint256 amount
     ) public hasEnoughBalance(amount) {
-        sendMoneyToOwner(amount, tokenAddress);
+        _burn(msg.sender, amount);
+        sendMoneyToOwner(amount);
         emit ChangeRubies(amount);
     }
 
@@ -176,6 +160,12 @@ contract HeadSoccerRubies is ERC20, AccessControl {
         address player2,
         uint256 amount
     ) external onlyRole(FRONTEND_WALLET) {
+        if (player1 == address(0)) {
+            revert ZeroAddress(player1);
+        }
+        if (player2 == address(0)) {
+            revert ZeroAddress(player2);
+        }
         if (balanceOf(player1) < amount) {
             revert NotEnoughRubies(balanceOf(player1), amount);
         }
@@ -184,10 +174,11 @@ contract HeadSoccerRubies is ERC20, AccessControl {
         }
 
         uint256 commissionForGame = (amount * commissions) / 100;
-        sendMoneyToOwner(commissionForGame * 2, USDT);
 
-        _burn(player1, amount - commissionForGame);
-        _burn(player2, amount - commissionForGame);
+        _burn(player1, amount);
+        _burn(player2, amount);
+
+        sendMoneyToOwner(commissionForGame * 2);
 
         emit StartGameEvent(amount, player1, player2);
     }
@@ -201,6 +192,9 @@ contract HeadSoccerRubies is ERC20, AccessControl {
         address winner,
         uint256 rewars
     ) external onlyRole(FRONTEND_WALLET) {
+        if (winner == address(0)) {
+            revert ZeroAddress(winner);
+        }
         _mint(winner, rewars);
         emit FinishGameEvent(winner, rewars);
     }
@@ -217,39 +211,17 @@ contract HeadSoccerRubies is ERC20, AccessControl {
         }
         commissions = newCommission;
     }
+
+    /**
+     * @dev The function changes the ratios for exchanging rubies for tokens.
+     * @param newConversion The amount of the new commission.
+     */
+    function changeConversion(
+        uint256 newConversion
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (newConversion <= 0) {
+            revert NotRightCommission(newConversion);
+        }
+        conversion = newConversion;
+    }
 }
-
-// прибыль компании, которая списывается за покупку токенов идет на адрес комиссии - все покупки алмазов, рубинов, сундуков
-// 80% победителю при выйгранной игре
-// смарт контракт сразу пересылает доллары, сразу меняет их, а лишние рубины просто сжигаются
-
-// ?код для реализации игры
-// /**
-//  * @dev The structure of the game.
-//  */
-// struct PlayGame {
-//     address winner;
-//     address[] players;
-//     uint256 reward;
-//     bool start;
-// }
-
-// /**
-//  * @dev A link to the game number and information about it.
-//  */
-// mapping(uint256 => PlayGame) public allGames;
-
-//     address[] memory playersZero = new address[](2);
-//     playersZero[0] = player1;
-//     playersZero[1] = player2;
-
-//     PlayGame memory newGame = PlayGame({
-//         winner: address(0),
-//         players: playersZero,
-//         reward: amount * 2,
-//         start: true
-//     });
-
-//     allGames[gameId] = newGame;
-//     emit StartGameEvent(amount, gameId);
-//     gameId++;
